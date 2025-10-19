@@ -1,4 +1,4 @@
-# Author: Christian Giovanni Luna Jaramillo
+# Discord Music Bot
 
 # Create the bot
 First we have to create a Bot in Discord and enabled the following privileges
@@ -87,3 +87,7 @@ Explanation:
 
 [download.py](download.py) is going to download the music in our local machine like an .mp3 file and then is it will be reproduce in the Discord Channel Voice
 This way have a lot of disadvantages but it will be our base to our Discord Music Bot
+
+
+
+#### by: Christian Luna
