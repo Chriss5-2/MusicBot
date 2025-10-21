@@ -166,4 +166,39 @@ try {
 ```
 With this script, the bot became more stable, asynchronous and efficient by waiting for the Python script to finish generating the direct stream URL before playing the audio
 
+## Version 2.1:
+In V2.0, some YouTube videos would stop playing before completion. The bot would disconnect prematurely with certain audio formats.
+
+The issue was likely due to @discordjs/voice not properly detecting the audio stream format. YouTube returns various formats (Opus, WebM, MP4, etc.), and without explicit format detection, the library sometimes failed to process the stream correctly, resulting in premature disconnects.
+
+**Solution:** We implemented `demuxProbe` from @discordjs/voice to automatically detect the stream format before creating the AudioResource.
+
+### Key Changes in index.js:
+
+**Before (V2.0):**
+```javascript
+const resource = createAudioResource(audioUrl, { inlineVolume: true });
+```
+
+**After (V2.1):**
+```javascript
+const { Readable } = require('stream');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, demuxProbe, StreamType } = require('@discordjs/voice');
+
+// Fetch and convert Web Stream to Node.js Stream
+const response = await fetch(audioUrl);
+const stream = Readable.fromWeb(response.body);
+
+// Probe stream to detect format automatically
+const { stream: probedStream, type } = await demuxProbe(stream);
+const resource = createAudioResource(probedStream, { 
+  inputType: type,    // Use detected format
+  inlineVolume: true 
+});
+```
+
+- `demuxProbe` analyzes the first bytes of the stream to determine automatic format detection (Opus, WebM, MP4)
+
+- Works with Node.js v16.5+ using `Readable.fromWeb()`
+
 #### by: C. Luna & J. Osorio

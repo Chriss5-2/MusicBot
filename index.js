@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, demuxProbe, StreamType } = require('@discordjs/voice');
 const { exec } = require('child_process');
+const { Readable } = require('stream');
 const util = require('util');
 require('dotenv').config();
 
@@ -45,7 +46,17 @@ client.on('messageCreate', async (message) => {
       adapterCreator: message.guild.voiceAdapterCreator,
     });
 
-    const resource = createAudioResource(audioUrl, { inlineVolume: true });
+    const response = await fetch(audioUrl); // Fetch the audio stream
+
+    const stream = Readable.fromWeb(response.body); // Convert to Node.js Readable stream
+
+    // Probe the stream to determine its type
+    const { stream: probedStream, type } = await demuxProbe(stream);
+    const resource = createAudioResource(probedStream, { 
+      inputType: type,    // Use the detected stream type
+      inlineVolume: true 
+    });
+
     const player = createAudioPlayer();
 
     player.play(resource);
