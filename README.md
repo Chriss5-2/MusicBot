@@ -166,4 +166,4 @@ try {
 ```
 With this script, the bot became more stable, asynchronous and efficient by waiting for the Python script to finish generating the direct stream URL before playing the audio
 
-#### by: Christian Luna
+#### by: C. Luna & J. Osorio
