@@ -1,7 +1,11 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
 const { exec } = require('child_process');
+const util = require('util');
 require('dotenv').config();
+
+// Creating exec as a promise
+const execPromise = util.promisify(exec);
 
 const client = new Client({
   intents: [
@@ -26,16 +30,14 @@ client.on('messageCreate', async (message) => {
   const voiceChannel = message.member?.voice.channel;
   if (!voiceChannel) return message.reply('🎧 ¡Debes estar en un canal de voz!');
 
-  // Aquí reemplazamos la descarga y stream de play-dl
-  let mp3Path = 'cancion.mp3';
-  message.reply(`🎵 Descargando canción...`);
+  message.reply(`🎵 Obteniendo stream de audio...`);
 
-  exec(`python download.py "${url}"`, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error al descargar: ${error.message}`);
-      return message.reply('❌ No pude descargar la canción.');
-    }
-    console.log(stdout);
+  // Using await to get the audio stream URL in case this takes more time
+  try {
+    // 👇 Espera a que Python termine, sin bloquear
+    const { stdout } = await execPromise(`python get_url.py "${url}"`);
+    const audioUrl = stdout.trim();
+    console.log('🎶 Stream URL:', audioUrl);
 
     const connection = joinVoiceChannel({
       channelId: voiceChannel.id,
@@ -43,15 +45,18 @@ client.on('messageCreate', async (message) => {
       adapterCreator: message.guild.voiceAdapterCreator,
     });
 
-    const resource = createAudioResource(mp3Path);
+    const resource = createAudioResource(audioUrl, { inlineVolume: true });
     const player = createAudioPlayer();
+
     player.play(resource);
     connection.subscribe(player);
 
     player.on(AudioPlayerStatus.Idle, () => connection.destroy());
-
     message.reply(`▶️ Reproduciendo: ${url}`);
-  });
+  } catch (error) {
+    console.error('Error:', error);
+    message.reply('❌ Ocurrió un error al obtener el audio.');
+  }
 });
 
 client.login(process.env.TOKEN);
