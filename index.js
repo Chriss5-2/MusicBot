@@ -1,7 +1,11 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
 const { exec } = require('child_process');
+const util = require('util');
 require('dotenv').config();
+
+// Creating exec as a promise
+const execPromise = util.promisify(exec);
 
 const client = new Client({
   intents: [
@@ -28,12 +32,10 @@ client.on('messageCreate', async (message) => {
 
   message.reply(`🎵 Obteniendo stream de audio...`);
 
-  exec(`python get_url.py "${url}"`, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error al obtener URL: ${error.message}`);
-      return message.reply('❌ No pude obtener el audio.');
-    }
-
+  // Using await to get the audio stream URL in case this takes more time
+  try {
+    // 👇 Espera a que Python termine, sin bloquear
+    const { stdout } = await execPromise(`python get_url.py "${url}"`);
     const audioUrl = stdout.trim();
     console.log('🎶 Stream URL:', audioUrl);
 
@@ -43,7 +45,6 @@ client.on('messageCreate', async (message) => {
       adapterCreator: message.guild.voiceAdapterCreator,
     });
 
-    console.log(`Cargando audio...`);
     const resource = createAudioResource(audioUrl, { inlineVolume: true });
     const player = createAudioPlayer();
 
@@ -52,7 +53,10 @@ client.on('messageCreate', async (message) => {
 
     player.on(AudioPlayerStatus.Idle, () => connection.destroy());
     message.reply(`▶️ Reproduciendo: ${url}`);
-  });
+  } catch (error) {
+    console.error('Error:', error);
+    message.reply('❌ Ocurrió un error al obtener el audio.');
+  }
 });
 
 client.login(process.env.TOKEN);
